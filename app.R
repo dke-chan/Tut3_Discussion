@@ -30,7 +30,15 @@ ui <- fluidPage(
                     hr(),
                     plotOutput("diceRoll", height = "100px")
                 ),
-                tabPanel("Empirical PDF", verbatimTextOutput("empPDF")),
+                tabPanel(
+                    "Empirical PDF", 
+                    plotOutput("empPDF"),
+                    hr(),
+                    div(
+                        strong("N: "), textOutput("N_current", inline = TRUE), br(),
+                        strong("Mean: "), textOutput("mu_current", inline = TRUE)
+                    )
+                ),
                 tabPanel("Data", dataTableOutput("currentData"))
             )
         )
@@ -100,27 +108,26 @@ server <- function(input, output, session) {
 
     ## Visualise the donut plot of the discussion question
     output$donutPlot <- renderPlot({
-        ##
+        ## Only print if we actually simulate data!
         req(nrow(logfile$simulateData) > 0)
 
-        ##
+        ## Load in the data
         toPlot <- processData(logfile$simulateData)
 
-        ##
+        ## Plot the two probabilities as a donut plot
         ggplot(toPlot, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = lessThan21)) +
             theme_void() +
             theme(legend.position = "none") +
             geom_rect() +
             coord_polar(theta = "y") +
             scale_fill_brewer(palette = "Set1") +
-            # title("Rho(X >= 21)", parse = TRUE)
-            # annotate("text", x = 4, y = c(0.25, 0.75), label = c("Rho(X >= 21)", "Rho(X < 21)"), size = 6, parse = TRUE) +
-            # annotate("text", x = 4, y = c(0.27, 0.73), label = as.character(round(toPlot$count/sum(toPlot$count), 2)), size = 6, parse = TRUE) +
+            annotate("text", x = 1.5, y = c(0.25, 0.75), label = c("Rho(X >= 21)", "Rho(X < 21)"), size = 6, parse = TRUE) +
+            annotate("text", x = 2, y = c(0.28, 0.72), label = as.character(round(toPlot$count/sum(toPlot$count), 2)), size = 6, parse = TRUE) +
             xlim(c(-1, 4))
     })
 
     output$diceRoll <- renderPlot({
-        ##
+        ## Only print if we actually simulate data!
         req(nrow(logfile$simulateData) > 0)
 
     })
@@ -128,7 +135,39 @@ server <- function(input, output, session) {
     ## Special case if N_Sim == 1
 
     ## Visualise the empirical probability density function
-    #output$empPMF
+    output$empPDF <- renderPlot({
+        ## Only print if we actually simulate data!
+        req(nrow(logfile$simulateData) > 0)
+        
+        ## Load in the data
+        toPlot <- logfile$simulateData
+        
+        ## Plot the data as a discrete "histogram"
+        ggplot(toPlot, aes(x = Sum, y = ..prop..)) +
+            theme_bw() +
+            geom_bar(colour = "black", fill = "lightblue") +
+            labs(title = "Empirical PDF of X", caption = "X ~ sum(4d10) - min(4d10)") +
+            xlab("X") +
+            ylab("Density") + 
+            scale_x_continuous(breaks = seq(3, 30, by = 3), limits = c(2.4, 30.6), expand = expansion(add = 0.6))
+    })
+    
+    ## UI elements in the empirical probabiltiy density function tab
+    output$N_current <- renderText({
+        ## Only print if we actually simulate data!
+        req(nrow(logfile$simulateData) > 0)
+        
+        ## Return the number of simulations
+        nrow(logfile$simulateData)
+    })
+    
+    output$mu_current <- renderText({
+        ## Only print if we actually simulate data!
+        req(nrow(logfile$simulateData) > 0)
+        
+        ## Return the average of the simulations
+        mean(logfile$simulateData$Sum)
+    })
 
     ## Table of the raw data
     output$currentData <- renderDataTable(logfile$simulateData)
