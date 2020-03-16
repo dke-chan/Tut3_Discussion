@@ -17,8 +17,8 @@ ui <- fluidPage(
         sidebarPanel(
             ## Input for the number of simulations
             numericInput("N_sim", "Number of Simulations:", min = 1, value = 100, step = 10),
-            actionButton("singlePlay", "Simulate", class = "btn btn-primary"),
-            hr()
+            checkboxInput("toAnimate", "Animate"),
+            actionButton("singlePlay", "Simulate", class = "btn btn-primary")
         ),
         mainPanel(
             tabsetPanel(
@@ -81,7 +81,10 @@ server <- function(input, output, session) {
     ##
     logfile <- reactiveValues(
         previous.N_sim = 100,
-        simulateData = tibble(Rolls = list(), Drop = numeric(), Sum = numeric(), Run_ID = numeric())
+        simulateData = tibble(Rolls = list(), Drop = numeric(), Sum = numeric(), Run_ID = numeric()),
+        currentlyAnimating = FALSE,
+        currentOb = 0,
+        targetOb = 0
     )
     
     ##
@@ -153,6 +156,7 @@ server <- function(input, output, session) {
             theme_void() +
             theme(legend.position = "none") +
             geom_rect() +
+            labs(caption = "Let Z be 4d10. Then, let X be: sum(Z) - min(Z)") + 
             coord_polar(theta = "y") +
             scale_fill_brewer(palette = "Set1") +
             annotate("text", x = 1.5, y = c(0.25, 0.75), label = c("Rho(X >= 21)", "Rho(X < 21)"), size = 6, parse = TRUE) +
@@ -164,7 +168,7 @@ server <- function(input, output, session) {
     output$diceRoll <- renderPlot({diePlot()()})
     output$diceRollToo <- renderPlot({diePlot()()})
 
-    ## Special case if N_Sim == 1
+    ## Special case if N_Sim == 1 invalidateLater to do pseudo animations?
 
     ## Visualise the empirical probability density function
     output$empPDF <- renderPlot({
@@ -178,7 +182,7 @@ server <- function(input, output, session) {
         ggplot(toPlot, aes(x = Sum, y = ..prop..)) +
             theme_bw() +
             geom_bar(colour = "black", fill = "lightblue") +
-            labs(title = "Empirical PDF of X", caption = "X ~ sum(4d10) - min(4d10)") +
+            labs(title = "Empirical PDF of X", caption = "Let Z be 4d10. Then, let X be: sum(Z) - min(Z)") +
             xlab("X") +
             ylab("Density") + 
             scale_x_continuous(breaks = seq(3, 30, by = 3), limits = c(2.4, 30.6), expand = expansion(add = 0.6))
