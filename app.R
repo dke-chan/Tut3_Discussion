@@ -28,12 +28,20 @@ ui <- fluidPage(
                     "Results",
                     plotOutput("donutPlot"),
                     hr(),
-                    plotOutput("diceRoll", height = "100px")
+                    div(
+                        align = "center",
+                        plotOutput("diceRoll", height = "100px", width = "400px")
+                    )
                 ),
                 tabPanel(
                     "Empirical PDF", 
                     plotOutput("empPDF"),
                     hr(),
+                    div(
+                        align = "center",
+                        plotOutput("diceRollToo", height = "100px", width = "400px")
+                    ),
+                    br(),
                     div(
                         strong("N: "), textOutput("N_current", inline = TRUE), br(),
                         strong("Mean: "), textOutput("mu_current", inline = TRUE)
@@ -75,6 +83,32 @@ server <- function(input, output, session) {
         previous.N_sim = 100,
         simulateData = tibble(Rolls = list(), Drop = numeric(), Sum = numeric(), Run_ID = numeric())
     )
+    
+    ##
+    diePlot <- reactive({function(){
+        ## Only print if we actually simulate data!
+        req(nrow(logfile$simulateData) > 0)
+        
+        ## Set-up plot area
+        par(mar = rep(0, 4), xaxs = "i", yaxs = "i")
+        
+        ## Draw the plot "empty"
+        plot(0, type = "n", axes = FALSE, xlim = c(0.5, 4.5), ylim = c(0, 1))
+        box()
+        
+        ## Do the lines between die
+        innerPortLines_X <- c(1.5, 2.5, 3.5)
+        segments(innerPortLines_X, rep(0, 3), innerPortLines_X, rep(1, 3))
+        
+        ##
+        currentRoll <- unlist(logfile$simulateData$Rolls[nrow(logfile$simulateData)])
+        
+        ## 
+        text(
+            x = 1:4, y = rep(0.5, 4), labels = currentRoll,
+            cex = 4, col = dplyr::if_else(1:4 == which.min(currentRoll), "tomato", "black")
+        )}
+    })
 
     ## Ensure sensible values in the "N_sim" element
     observeEvent(input$N_sim, {
@@ -102,7 +136,7 @@ server <- function(input, output, session) {
             Sum = apply(x, 1, function (y) {sum(y) - min(y)}),
             Run_ID = as.numeric(input$singlePlay)
         ) %>%
-        bind_rows(logfile$simulateData) ->
+        {bind_rows(logfile$simulateData, .)} ->
         logfile$simulateData
     })
 
@@ -126,11 +160,9 @@ server <- function(input, output, session) {
             xlim(c(-1, 4))
     })
 
-    output$diceRoll <- renderPlot({
-        ## Only print if we actually simulate data!
-        req(nrow(logfile$simulateData) > 0)
-
-    })
+    ##
+    output$diceRoll <- renderPlot({diePlot()()})
+    output$diceRollToo <- renderPlot({diePlot()()})
 
     ## Special case if N_Sim == 1
 
