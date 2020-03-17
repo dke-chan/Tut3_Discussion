@@ -8,52 +8,55 @@
 
 library(shiny); library(ggplot2); library(dplyr); library(magrittr)
 
-ui <- fluidPage(
-
-    ## Application title
+ui <- fixedPage(
     titlePanel("Tutorial 3 - Discussion Question"),
 
-    sidebarLayout(
-        sidebarPanel(
-            ## Input for the number of simulations
-            numericInput("N_sim", "Number of Simulations:", min = 1, value = 100, step = 10),
-            checkboxInput("toAnimate", "Animate"),
-            actionButton("singlePlay", "Simulate", class = "btn btn-primary"),
-            hr(),
-            sliderInput("animationSpeed", "Animation Speed (s)", 0.2, 2, 1, round = TRUE, ticks = FALSE)
-        ),
-        mainPanel(
-            tabsetPanel(
-                type = "tabs",
-                id = "viewport",
-                tabPanel(
-                    "Results",
-                    plotOutput("donutPlot"),
-                    hr(),
-                    div(
-                        align = "center",
-                        plotOutput("diceRoll", height = "100px", width = "400px")
-                    )
+    sidebarPanel(
+        ## Input for the number of simulations
+        numericInput("N_sim", "Number of Simulations:", min = 1, value = 100, step = 10),
+        ##
+        checkboxInput("toAnimate", "Animate"),
+        ##
+        actionButton("singlePlay", "Simulate", class = "btn btn-primary"),
+        hr(),
+        ##
+        sliderInput("animationSpeed", "Animation Speed (s)", 0.4, 2, 1, round = TRUE, ticks = FALSE)
+    ),
+    mainPanel(
+        tabsetPanel(
+            type = "tabs",
+            id = "viewport",
+            ##
+            tabPanel(
+                "Results",
+                plotOutput("donutPlot"),
+                hr(),
+                div(
+                    align = "center",
+                    plotOutput("diceRoll", height = "100px", width = "400px")
+                )
+            ),
+            ##
+            tabPanel(
+                "Empirical PDF", 
+                plotOutput("empPDF"),
+                hr(),
+                div(
+                    align = "center",
+                    plotOutput("diceRollToo", height = "100px", width = "400px")
                 ),
-                tabPanel(
-                    "Empirical PDF", 
-                    plotOutput("empPDF"),
-                    hr(),
-                    div(
-                        align = "center",
-                        plotOutput("diceRollToo", height = "100px", width = "400px")
-                    ),
-                    br(),
-                    div(
-                        strong("N: "), textOutput("N_current", inline = TRUE), br(),
-                        strong("Mean: "), textOutput("mu_current", inline = TRUE)
-                    )
-                ),
-                tabPanel("Data", dataTableOutput("currentData"))
-            )
+                br(),
+                div(
+                    strong("N: "), textOutput("N_current", inline = TRUE), br(),
+                    strong("Mean: "), textOutput("mu_current", inline = TRUE)
+                )
+            ),
+            ##
+            tabPanel("Data", dataTableOutput("currentData"))
         )
-    )
+    )    
 )
+
 
 processData <- function(input) {
     ##
