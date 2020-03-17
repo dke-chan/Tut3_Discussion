@@ -20,7 +20,7 @@ ui <- fixedPage(
         actionButton("singlePlay", "Simulate", class = "btn btn-primary"),
         hr(),
         ##
-        sliderInput("animationSpeed", "Animation Speed (s)", 0.4, 2, 1, round = TRUE, ticks = FALSE)
+        sliderInput("animationSpeed", "Animation Speed (s)", 0.1, 2, 1, round = TRUE, ticks = FALSE)
     ),
     mainPanel(
         tabsetPanel(
