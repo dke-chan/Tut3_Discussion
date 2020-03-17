@@ -18,7 +18,9 @@ ui <- fluidPage(
             ## Input for the number of simulations
             numericInput("N_sim", "Number of Simulations:", min = 1, value = 100, step = 10),
             checkboxInput("toAnimate", "Animate"),
-            actionButton("singlePlay", "Simulate", class = "btn btn-primary")
+            actionButton("singlePlay", "Simulate", class = "btn btn-primary"),
+            hr(),
+            sliderInput("animationSpeed", "Animation Speed (s)", 0.2, 2, 1, round = TRUE, ticks = FALSE)
         ),
         mainPanel(
             tabsetPanel(
@@ -86,6 +88,26 @@ server <- function(input, output, session) {
         currentOb = 0,
         targetOb = 0
     )
+
+    ##
+    observe(priority = 9000, {
+        ##
+        invalidateLater(1000 * input$animationSpeed)
+        
+        ##
+        isolate({
+            ##
+            req(logfile$currentlyAnimating & logfile$currentOb < logfile$targetOb)
+            
+            ##
+            logfile$currentOb <- logfile$currentOb + 1
+            
+            ##
+            if (logfile$currentOb >= logfile$targetOb) {
+                logfile$currentlyAnimating <- FALSE
+            }   
+        })
+    })
     
     ##
     diePlot <- reactive({function(){
@@ -104,14 +126,20 @@ server <- function(input, output, session) {
         segments(innerPortLines_X, rep(0, 3), innerPortLines_X, rep(1, 3))
         
         ##
-        currentRoll <- unlist(logfile$simulateData$Rolls[nrow(logfile$simulateData)])
-        
+        if (logfile$currentlyAnimating) {
+            ## 
+            currentRoll <- unlist(logfile$simulateData$Rolls[logfile$currentOb])
+        } else {
+            ##
+            currentRoll <- unlist(logfile$simulateData$Rolls[nrow(logfile$simulateData)])
+        }
+            
         ## 
         text(
             x = 1:4, y = rep(0.5, 4), labels = currentRoll,
             cex = 4, col = dplyr::if_else(1:4 == which.min(currentRoll), "tomato", "black")
-        )}
-    })
+        )
+    }})
 
     ## Ensure sensible values in the "N_sim" element
     observeEvent(input$N_sim, {
@@ -129,18 +157,30 @@ server <- function(input, output, session) {
 
     ## Generate data via the "singlePlayer" element
     observeEvent(input$singlePlay, {
-        ## Generate the 4d10 "N_sim" times
-        x <- matrix(sample(x = 1:10, size = 4 * input$N_sim, replace = TRUE), nrow = input$N_sim, ncol = 4)
-
-        ## Bind together the newly generated data to the current "logfile$simulateData" object
-        tibble(
-            Rolls = apply(x, 1, list),
-            Drop = apply(x, 1, function (y) {min(y)}),
-            Sum = apply(x, 1, function (y) {sum(y) - min(y)}),
-            Run_ID = as.numeric(input$singlePlay)
-        ) %>%
-        {bind_rows(logfile$simulateData, .)} ->
-        logfile$simulateData
+        ## Only generate data if we are not in an animation loop
+        if (!logfile$currentlyAnimating) {
+            ## Check whether we have the animation flag active, if so, turn on the animation functionality and disable input$singlePlay
+            if (input$toAnimate) {
+                logfile$currentlyAnimating <- TRUE
+                logfile$currentOb <- nrow(logfile$simulateData)
+                logfile$targetOb <- logfile$currentOb + input$N_sim
+                
+                # oEvent$resume()
+            }
+                
+            ## Generate the 4d10 "N_sim" times
+            x <- matrix(sample(x = 1:10, size = 4 * input$N_sim, replace = TRUE), nrow = input$N_sim, ncol = 4)
+            
+            ## Bind together the newly generated data to the current "logfile$simulateData" object
+            tibble(
+                Rolls = apply(x, 1, list),
+                Drop = apply(x, 1, function (y) {min(y)}),
+                Sum = apply(x, 1, function (y) {sum(y) - min(y)}),
+                Run_ID = as.numeric(input$singlePlay)
+            ) %>%
+            {bind_rows(logfile$simulateData, .)} ->
+            logfile$simulateData
+        }
     })
 
     ## Visualise the donut plot of the discussion question
@@ -149,8 +189,14 @@ server <- function(input, output, session) {
         req(nrow(logfile$simulateData) > 0)
 
         ## Load in the data
-        toPlot <- processData(logfile$simulateData)
-
+        if (logfile$currentlyAnimating) {
+            ## 
+            toPlot <- processData(logfile$simulateData[1:logfile$currentOb, ])
+        } else {
+            ##
+            toPlot <- processData(logfile$simulateData)
+        }
+        
         ## Plot the two probabilities as a donut plot
         ggplot(toPlot, aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = lessThan21)) +
             theme_void() +
@@ -176,7 +222,11 @@ server <- function(input, output, session) {
         req(nrow(logfile$simulateData) > 0)
         
         ## Load in the data
-        toPlot <- logfile$simulateData
+        if (logfile$currentlyAnimating) {
+            toPlot <- logfile$simulateData[1:logfile$currentOb, ]
+        } else {
+            toPlot <- logfile$simulateData
+        }
         
         ## Plot the data as a discrete "histogram"
         ggplot(toPlot, aes(x = Sum, y = ..prop..)) +
@@ -185,6 +235,7 @@ server <- function(input, output, session) {
             labs(title = "Empirical PDF of X", caption = "Let Z be 4d10. Then, let X be: sum(Z) - min(Z)") +
             xlab("X") +
             ylab("Density") + 
+            theme(panel.grid = element_blank()) + 
             scale_x_continuous(breaks = seq(3, 30, by = 3), limits = c(2.4, 30.6), expand = expansion(add = 0.6))
     })
     
@@ -194,7 +245,11 @@ server <- function(input, output, session) {
         req(nrow(logfile$simulateData) > 0)
         
         ## Return the number of simulations
-        nrow(logfile$simulateData)
+        if (logfile$currentlyAnimating) {
+            return(nrow(logfile$simulateData[1:logfile$currentOb, ]))
+        }
+        
+        return (nrow(logfile$simulateData))
     })
     
     output$mu_current <- renderText({
@@ -202,7 +257,11 @@ server <- function(input, output, session) {
         req(nrow(logfile$simulateData) > 0)
         
         ## Return the average of the simulations
-        mean(logfile$simulateData$Sum)
+        if (logfile$currentlyAnimating) {
+            return(mean(logfile$simulateData$Sum[1:logfile$currentOb]))
+        }
+        
+        return (mean(logfile$simulateData$Sum))
     })
 
     ## Table of the raw data
