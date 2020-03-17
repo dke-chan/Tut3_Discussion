@@ -38,7 +38,7 @@ ui <- fixedPage(
             ),
             ##
             tabPanel(
-                "Empirical PDF", 
+                "Empirical PMF", 
                 plotOutput("empPDF"),
                 hr(),
                 div(
@@ -235,7 +235,7 @@ server <- function(input, output, session) {
         ggplot(toPlot, aes(x = Sum, y = ..prop..)) +
             theme_bw() +
             geom_bar(colour = "black", fill = "lightblue") +
-            labs(title = "Empirical PDF of X", caption = "Let Z be 4d10. Then, let X be: sum(Z) - min(Z)") +
+            labs(title = "Empirical PMF of X", caption = "Let Z be 4d10. Then, let X be: sum(Z) - min(Z)") +
             xlab("X") +
             ylab("Density") + 
             theme(panel.grid = element_blank()) + 

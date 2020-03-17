@@ -5,6 +5,6 @@ account: dke-chan
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1956433
-bundleId: 2888570
+bundleId: 2888720
 url: https://dke-chan.shinyapps.io/tut3_discussion/
-when: 1584408299.36341
+when: 1584412015.62315
